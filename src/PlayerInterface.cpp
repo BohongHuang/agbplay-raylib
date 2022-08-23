@@ -122,6 +122,7 @@ void PlayerInterface::Stop()
             break;
         case State::TERMINATED:
         case State::SHUTDOWN:
+            rBuf.Clear();
             playerThread->join();
             playerThread.reset();
             playerState = State::THREAD_DELETED;

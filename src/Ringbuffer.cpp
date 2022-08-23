@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <thread>
 
 #include "Ringbuffer.h"
 
@@ -13,12 +14,14 @@ Ringbuffer::Ringbuffer(size_t elementCount)
 
 void Ringbuffer::Put(sample *inData, size_t nElements)
 {
-    std::unique_lock<std::mutex> lock(countLock);
     while (freeCount < nElements){
-        sig.wait(lock);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
+
+    std::unique_lock<std::mutex> lock(countLock);
+
     while (nElements > 0) {
-        size_t count = putChunk(inData, nElements);
+        size_t count = PutChunk(inData, nElements);
         inData += count;
         nElements -= count;
     }
@@ -33,11 +36,10 @@ void Ringbuffer::Take(sample *outData, size_t nElements)
         // output
         std::unique_lock<std::mutex> lock(countLock);
         while (nElements > 0) {
-            size_t count = takeChunk(outData, nElements);
+            size_t count = TakeChunk(outData, nElements);
             outData += count;
             nElements -= count;
         }
-        sig.notify_one();
     }
 }
 
@@ -55,7 +57,7 @@ void Ringbuffer::Clear()
  * private Ringbuffer
  */
 
-size_t Ringbuffer::putChunk(sample *inData, size_t nElements)
+size_t Ringbuffer::PutChunk(sample *inData, size_t nElements)
 {
     bool wrap = nElements >= bufData.size() - freePos;
     size_t count;
@@ -74,7 +76,7 @@ size_t Ringbuffer::putChunk(sample *inData, size_t nElements)
     return count;
 }
 
-size_t Ringbuffer::takeChunk(sample *outData, size_t nElements)
+size_t Ringbuffer::TakeChunk(sample *outData, size_t nElements)
 {
     bool wrap = nElements >= bufData.size() - dataPos;
     size_t count;
