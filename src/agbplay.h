@@ -11,18 +11,18 @@ extern "C" {
 
 typedef struct {
     void *handle;
-} Player;
+} AgbPlayer;
 
-Player *PlayerCreateFromRomData(uint8_t *, size_t);
-Player *PlayerCreateFromPath(const char *);
-void PlayerDelete(Player*);
-void PlayerPlay(Player*);
-void PlayerPause(Player*);
-void PlayerStop(Player*);
-bool PlayerIsPlaying(Player*);
-void PlayerSetSong(Player*, uint16_t);
-size_t PlayerGetSongNumber(Player*);
-void PlayerTakeBuffer(Player*, void*, size_t);
+AgbPlayer *AgbPlayerCreateFromRomData(uint8_t *, size_t);
+AgbPlayer *AgbPlayerCreateFromPath(const char *);
+void AgbPlayerDelete(AgbPlayer *);
+void AgbPlayerPlay(AgbPlayer *);
+void AgbPlayerPause(AgbPlayer *);
+void AgbPlayerStop(AgbPlayer *);
+bool AgbPlayerIsPlaying(AgbPlayer *);
+void AgbPlayerSetSong(AgbPlayer *, uint16_t);
+size_t AgbPlayerGetSongNumber(AgbPlayer *);
+void AgbPlayerTakeBuffer(AgbPlayer *, void *, size_t);
 
 #ifdef __cplusplus
 };
