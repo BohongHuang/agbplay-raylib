@@ -8,16 +8,15 @@
 #include "SoundChannel.h"
 #include "Util.h"
 #include "Xcept.h"
-#include "ConfigManager.h"
 
 /*
  * public SoundChannel
  */
 
-SoundChannel::SoundChannel(SampleInfo sInfo, ADSR env, const Note& note, bool fixed)
-    : env(env), note(note), sInfo(sInfo), fixed(fixed) 
+SoundChannel::SoundChannel(SampleInfo sInfo, ADSR env, const Note& note, bool fixed, const std::shared_ptr<ConfigManager>& config)
+    : env(env), note(note), sInfo(sInfo), fixed(fixed)
 {
-    GameConfig& cfg = ConfigManager::Instance().GetCfg();
+    GameConfig& cfg = config->GetCfg();
     ResamplerType t = fixed ? cfg.GetResTypeFixed() : cfg.GetResType();
     switch (t) {
     case ResamplerType::NEAREST:

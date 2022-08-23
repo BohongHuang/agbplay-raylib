@@ -6,6 +6,7 @@
 
 #include "Types.h"
 #include "Resampler.h"
+#include "ConfigManager.h"
 
 #define INVALID_TRACK_IDX 0xFF
 
@@ -14,7 +15,7 @@
 class CGBChannel
 {
 public: 
-    CGBChannel(ADSR env, Note note, bool useStairstep = false);
+    CGBChannel(ADSR env, Note note, bool useStairstep, std::shared_ptr<ConfigManager> config);
     CGBChannel(const CGBChannel&) = delete;
     CGBChannel& operator=(const CGBChannel&) = delete;
     virtual ~CGBChannel() = default;
@@ -38,6 +39,7 @@ protected:
     static float timer2freq(float timer);
     static float freq2timer(float freq);
 
+    std::shared_ptr<ConfigManager> config;
     std::unique_ptr<Resampler> rs;
     enum class Pan { LEFT, CENTER, RIGHT };
     uint32_t pos = 0;
@@ -67,7 +69,7 @@ protected:
 class SquareChannel : public CGBChannel
 {
 public:
-    SquareChannel(WaveDuty wd, ADSR env, Note note, uint8_t sweep);
+    SquareChannel(WaveDuty wd, ADSR env, Note note, uint8_t sweep, std::shared_ptr<ConfigManager> config);
 
     void SetPitch(int16_t pitch) override;
     void Process(sample *buffer, size_t numSamples, MixingArgs& args) override;
@@ -93,13 +95,13 @@ private:
 class WaveChannel : public CGBChannel
 {
 public:
-    WaveChannel(const uint8_t *wavePtr, ADSR env, Note note, bool useStairstep);
+    WaveChannel(const uint8_t *wavePtr, ADSR env, Note note, bool useStairstep, const std::shared_ptr<ConfigManager>& config);
 
     void SetPitch(int16_t pitch) override;
     void Process(sample *buffer, size_t numSamples, MixingArgs& args) override;
 private:
     VolumeFade getVol() const;
-    static bool sampleFetchCallback(std::vector<float>& fetchBuffer, size_t samplesRequired, void *cbdata);
+    static bool sampleFetchCallback(std::vector<float>& fetchBuffer, size_t samplesRequired, void *cbdata, std::shared_ptr<ConfigManager> config);
     float dcCorrection100;
     float dcCorrection75;
     float dcCorrection50;
@@ -110,7 +112,7 @@ private:
 class NoiseChannel : public CGBChannel
 {
 public:
-    NoiseChannel(NoisePatt np, ADSR env, Note note);
+    NoiseChannel(NoisePatt np, ADSR env, Note note, std::shared_ptr<ConfigManager> config);
 
     void SetPitch(int16_t pitch) override;
     void Process(sample *buffer, size_t numSamples, MixingArgs& args) override;

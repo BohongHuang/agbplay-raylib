@@ -5,12 +5,13 @@
 
 #include "Types.h"
 #include "Constants.h"
+#include "Rom.h"
 
 enum class InstrType { PCM, PCM_FIXED, SQ1, SQ2, WAVE, NOISE, INVALID };
 class SoundBank
 {
 public:
-    SoundBank() = default;
+    explicit SoundBank(std::shared_ptr<Rom> rom);
     SoundBank(const SoundBank&) = delete;
     SoundBank& operator=(const SoundBank&) = delete;
 
@@ -24,6 +25,7 @@ public:
     SampleInfo GetSampInfo(uint8_t instrNum, uint8_t midiKey);
     ADSR GetADSR(uint8_t instrNum, uint8_t midiKey);
 private:
+    std::shared_ptr<Rom> rom;
     size_t instrPos(uint8_t instrNum, uint8_t midiKey);
     size_t bankPos = 0;
 };
@@ -70,7 +72,7 @@ struct Track
 class Sequence 
 {
 public:
-    Sequence(uint8_t trackLimit);
+    explicit Sequence(std::shared_ptr<Rom> rom, uint8_t trackLimit);
     Sequence(const Sequence&) = delete;
     Sequence& operator=(const Sequence&) = delete;
 
@@ -89,6 +91,7 @@ public:
     uint8_t GetPriority() const;
     size_t GetSongHeaderPos() const;
 private:
+    std::shared_ptr<Rom> rom;
     size_t songHeaderPos;
     uint8_t trackLimit;
 }; // end Sequence
@@ -96,7 +99,7 @@ private:
 class SongTable 
 {
 public:
-    SongTable(size_t songTablePos = UNKNOWN_TABLE);
+    explicit SongTable(std::shared_ptr<Rom> rom, size_t songTablePos = UNKNOWN_TABLE);
     SongTable(const SongTable&) = delete;
     SongTable& operator=(const SongTable&) = delete;
 
@@ -109,6 +112,7 @@ private:
     bool validateSong(size_t songPos);
     size_t determineNumSongs();
 
+    std::shared_ptr<Rom> rom;
     size_t songTablePos;
     size_t numSongs;
 };

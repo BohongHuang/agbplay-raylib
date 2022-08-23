@@ -8,7 +8,6 @@
 #include "Debug.h"
 #include "Util.h"
 
-std::unique_ptr<Rom> Rom::global_instance;
 
 /*
  * public
@@ -16,20 +15,19 @@ std::unique_ptr<Rom> Rom::global_instance;
 
 Rom::Rom(const std::filesystem::path& filePath)
 {
-    loadFile(filePath);
-    verify();
+    LoadFile(filePath);
+    data = data_vector.data();
+    size = data_vector.size();
+    Verify();
 }
 
-void Rom::CreateInstance(const std::filesystem::path& filePath)
-{
-    global_instance = std::make_unique<Rom>(filePath);
-}
+Rom::Rom(const uint8_t *data, size_t size): size(size), data(data) {}
 
 std::string Rom::ReadString(size_t pos, size_t limit) const
 {
     std::string result;
     for (size_t i = 0; i < limit; i++) {
-        char c = static_cast<char>(data.at(pos + i));
+        char c = static_cast<char>(ReadU8(pos + i));
         if (c == '\0')
             break;
         result += c;
@@ -46,10 +44,10 @@ std::string Rom::GetROMCode() const
  * private
  */
 
-void Rom::verify() 
+void Rom::Verify()
 {
     // check ROM size
-    if (data.size() > AGB_ROM_SIZE || data.size() < 0x200)
+    if (size > AGB_ROM_SIZE || size < 0x200)
         throw Xcept("Illegal ROM size");
     
     // Logo data
@@ -68,23 +66,23 @@ void Rom::verify()
     };
 
     // check logo
-    for (size_t i = 0; i < sizeof(imageBytes); i++) {
-        if (imageBytes[i] != data.at(i + 0x4))
-            throw Xcept("ROM verification: Bad Nintendo Logo");
-    }
+//    for (size_t i = 0; i < sizeof(imageBytes); i++) {
+//        if (imageBytes[i] != ReadU8(i + 0x4))
+//            throw Xcept("ROM verification: Bad Nintendo Logo");
+//    }
 
     // check checksum
-    uint8_t checksum = data.at(0xBD);
+    uint8_t checksum = ReadU8(0xBD);
     int check = 0;
     for (size_t i = 0xA0; i < 0xBD; i++) {
-        check -= data.at(i);
+        check -= ReadU8(i);
     }
     check = (check - 0x19) & 0xFF;
     if (check != checksum)
         throw Xcept("ROM verification: Bad Header Checksum: %02X - expected %02X", (int)checksum, (int)check);
 }
 
-void Rom::loadFile(const std::filesystem::path& filePath)
+void Rom::LoadFile(const std::filesystem::path& filePath)
 {
     std::ifstream is(filePath, std::ios_base::binary);
     if (!is.is_open()) {
@@ -99,10 +97,10 @@ void Rom::loadFile(const std::filesystem::path& filePath)
         throw Xcept("Input ROM exceeds 32 MiB file limit");
     }
     is.seekg(0, std::ios_base::beg);
-    data.resize(static_cast<size_t>(size));
+    data_vector.resize(static_cast<size_t>(size));
 
     // copy file to memory
-    is.read(reinterpret_cast<char *>(data.data()), size);
+    is.read(reinterpret_cast<char *>(data_vector.data()), size);
     if (is.bad())
         throw Xcept("read bad");
     if (is.fail()) {
@@ -110,3 +108,4 @@ void Rom::loadFile(const std::filesystem::path& filePath)
     }
     is.close();
 }
+

@@ -8,14 +8,13 @@
 #include "Debug.h"
 #include "Util.h"
 #include "Constants.h"
-#include "ConfigManager.h"
 
 /*
  * public CGBChannel
  */
 
-CGBChannel::CGBChannel(ADSR env, Note note, bool useStairstep)
-    : env(env), note(note), useStairstep(useStairstep)
+CGBChannel::CGBChannel(ADSR env, Note note, bool useStairstep, std::shared_ptr<ConfigManager> config)
+    : config(std::move(config)), env(env), note(note), useStairstep(useStairstep)
 {
     this->env.att &= 0x7;
     this->env.dec &= 0x7;
@@ -312,8 +311,8 @@ void CGBChannel::applyVol()
  * public SquareChannel
  */
 
-SquareChannel::SquareChannel(WaveDuty wd, ADSR env, Note note, uint8_t sweep)
-    : CGBChannel(env, note)
+SquareChannel::SquareChannel(WaveDuty wd, ADSR env, Note note, uint8_t sweep, std::shared_ptr<ConfigManager> config)
+    : CGBChannel(env, note, false, std::move(config))
       , sweep(sweep)
       , sweepEnabled(isSweepEnabled(sweep))
       , sweepConvergence(sweep2convergence(sweep))
@@ -486,8 +485,8 @@ uint8_t SquareChannel::sweepTime(uint8_t sweep)
  * public WaveChannel
  */
 
-WaveChannel::WaveChannel(const uint8_t *wavePtr, ADSR env, Note note, bool useStairstep)
-    : CGBChannel(env, note, useStairstep), wavePtr(wavePtr)
+WaveChannel::WaveChannel(const uint8_t *wavePtr, ADSR env, Note note, bool useStairstep, const std::shared_ptr<ConfigManager>& config)
+    : CGBChannel(env, note, useStairstep, config), wavePtr(wavePtr)
 {
     this->rs = std::make_unique<BlepResampler>();
 
@@ -503,7 +502,7 @@ WaveChannel::WaveChannel(const uint8_t *wavePtr, ADSR env, Note note, bool useSt
     }
     dcCorrection100 = -sum * (1.0f / 32.0f);
 
-    GameConfig& cfg = ConfigManager::Instance().GetCfg();
+    GameConfig& cfg = config->GetCfg();
 
     if (cfg.GetAccurateCh3Quantization()) {
         sum = 0.0f;
@@ -540,7 +539,7 @@ WaveChannel::WaveChannel(const uint8_t *wavePtr, ADSR env, Note note, bool useSt
 
 void WaveChannel::SetPitch(int16_t pitch)
 {
-    freq = (440.0f * 16.0f) * 
+    freq = (440.0f * 16.0f) *
         powf(2.0f, float(note.midiKeyPitch - 69) * (1.0f / 12.0f) + float(pitch) * (1.0f / 768.0f));
 }
 
@@ -560,7 +559,11 @@ void WaveChannel::Process(sample *buffer, size_t numSamples, MixingArgs& args)
 
     float outBuffer[numSamples];
 
-    rs->Process(outBuffer, numSamples, interStep, sampleFetchCallback, this);
+    auto configManager = this->config;
+
+    rs->Process(outBuffer, numSamples, interStep, [configManager] (std::vector<float>& fetchBuffer, size_t samplesRequired, void *cbdata) {
+                    return sampleFetchCallback(fetchBuffer, samplesRequired, cbdata, configManager);
+    }, this);
 
     size_t i = 0;
     do {
@@ -577,7 +580,7 @@ void WaveChannel::Process(sample *buffer, size_t numSamples, MixingArgs& args)
 
 VolumeFade WaveChannel::getVol() const
 {
-    GameConfig& cfg = ConfigManager::Instance().GetCfg();
+    GameConfig& cfg = config->GetCfg();
 
     auto retval = CGBChannel::getVol();
 
@@ -605,7 +608,7 @@ VolumeFade WaveChannel::getVol() const
     return retval;
 }
 
-bool WaveChannel::sampleFetchCallback(std::vector<float>& fetchBuffer, size_t samplesRequired, void *cbdata)
+bool WaveChannel::sampleFetchCallback(std::vector<float>& fetchBuffer, size_t samplesRequired, void *cbdata, std::shared_ptr<ConfigManager> config)
 {
     if (fetchBuffer.size() >= samplesRequired)
         return true;
@@ -614,7 +617,7 @@ bool WaveChannel::sampleFetchCallback(std::vector<float>& fetchBuffer, size_t sa
     size_t i = fetchBuffer.size();
     fetchBuffer.resize(samplesRequired);
 
-    GameConfig& cfg = ConfigManager::Instance().GetCfg();
+    GameConfig& cfg = config->GetCfg();
 
     if (cfg.GetAccurateCh3Quantization()) {
         /* WARNING; VERY UGLY AND HACKY */
@@ -689,8 +692,8 @@ bool WaveChannel::sampleFetchCallback(std::vector<float>& fetchBuffer, size_t sa
  * public NoiseChannel
  */
 
-NoiseChannel::NoiseChannel(NoisePatt np, ADSR env, Note note)
-    : CGBChannel(env, note)
+NoiseChannel::NoiseChannel(NoisePatt np, ADSR env, Note note, std::shared_ptr<ConfigManager> config)
+    : CGBChannel(env, note, false, config)
 {
     this->rs = std::make_unique<NearestResampler>();
     if (np == NoisePatt::FINE) {

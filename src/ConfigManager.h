@@ -9,23 +9,21 @@
 class ConfigManager
 {
 public:
-    static ConfigManager& Instance();
-
+    ConfigManager() = default;
+    ConfigManager(std::string const &);
+    ConfigManager(const ConfigManager&) = delete;
+    ConfigManager& operator=(const ConfigManager&) = delete;
     GameConfig& GetCfg();
     const GameConfig& GetCfg() const;
     void SetGameCode(const std::string& gameCode);
-    void Load();
-    void Save();
     const std::filesystem::path& GetWavOutputDir();
     CGBPolyphony GetCgbPolyphony() const;
     int8_t GetMaxLoopsPlaylist() const;
+    void SetMaxLoopsPlaylist(int8_t maxLoops);
     int8_t GetMaxLoopsExport() const;
     double GetPadSecondsStart() const;
     double GetPadSecondsEnd() const;
 private:
-    ConfigManager() = default;
-    ConfigManager(const ConfigManager&) = delete;
-    ConfigManager& operator=(const ConfigManager&) = delete;
     std::vector<GameConfig> configs;
     std::filesystem::path confWavOutputDir;
     CGBPolyphony confCgbPolyphony;

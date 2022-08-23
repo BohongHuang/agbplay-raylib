@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <functional>
 
 /* 
  * res_data_fetch_cb fetches samplesRequired samples to fetchBuffer
@@ -8,7 +9,7 @@
  *
  * returns false in case of 'end of stream'
  */
-typedef bool (*res_data_fetch_cb)(std::vector<float>& fetchBuffer, size_t samplesRequired, void *cbdata);
+typedef std::function<bool (std::vector<float>&, size_t, void*)> res_data_fetch_cb;
 
 class Resampler {
 public:

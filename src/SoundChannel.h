@@ -6,6 +6,7 @@
 
 #include "Types.h"
 #include "Resampler.h"
+#include "ConfigManager.h"
 
 class SoundChannel
 {
@@ -19,7 +20,7 @@ private:
         float interStep;
     };
 public:
-    SoundChannel(SampleInfo sInfo, ADSR env, const Note& note, bool fixed);
+    SoundChannel(SampleInfo sInfo, ADSR env, const Note& note, bool fixed, const std::shared_ptr<ConfigManager>& config);
     SoundChannel(const SoundChannel&) = delete;
     SoundChannel& operator=(const SoundChannel&) = delete;
 

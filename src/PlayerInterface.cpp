@@ -4,47 +4,29 @@
 #include <algorithm>
 #include <cmath>
 #include <cassert>
+#include <utility>
 
 #include "PlayerInterface.h"
 #include "Xcept.h"
 #include "Debug.h"
 #include "Util.h"
-#include "ConfigManager.h"
-
-/*
- * PlayerInterface data
- */
-
-// first portaudio hostapi has highest priority, last hostapi has lowest
-// if none are available, the default one is selected.
-// they are also the ones which are known to work
-const std::vector<PaHostApiTypeId> PlayerInterface::hostApiPriority = {
-    // Unix
-    paJACK,
-    paALSA,
-    // Windows
-    paMME, // only option for cygwin
-};
 
 /*
  * public PlayerInterface
  */
 
-PlayerInterface::PlayerInterface(TrackviewGUI& trackUI, size_t initSongPos)
-    : trackUI(trackUI),
-    mutedTracks(ConfigManager::Instance().GetCfg().GetTrackLimit())
+PlayerInterface::PlayerInterface(std::shared_ptr<Rom> rom, size_t initSongPos, const std::shared_ptr<ConfigManager>& config)
+    : rom(std::move(rom)), config(config), mutedTracks(config->GetCfg().GetTrackLimit())
 {
-    initContext();
+    InitContext();
     ctx->InitSong(initSongPos);
-    setupLoudnessCalcs();
-    portaudioOpen();
+    SetupLoudnessCalcs();
 }
 
 PlayerInterface::~PlayerInterface() 
 {
     // stop and deallocate player thread if required
     Stop();
-    portaudioClose();
 }
 
 void PlayerInterface::LoadSong(size_t songPos)
@@ -52,13 +34,11 @@ void PlayerInterface::LoadSong(size_t songPos)
     bool play = playerState == State::PLAYING;
     Stop();
     ctx->InitSong(songPos);
-    setupLoudnessCalcs();
+    SetupLoudnessCalcs();
     // TODO replace this with pairs
     float vols[ctx->seq.tracks.size() * 2];
     for (size_t i = 0; i < ctx->seq.tracks.size() * 2; i++)
         vols[i] = 0.0f;
-
-    trackUI.SetState(ctx->seq, vols, 0, 0);
 
     if (play)
         Play();
@@ -88,7 +68,8 @@ void PlayerInterface::Play()
         break;
     case State::THREAD_DELETED:
         playerState = State::PLAYING;
-        playerThread = std::make_unique<std::thread>(&PlayerInterface::threadWorker, this);
+        playerThread = std::make_unique<std::thread>(
+                &PlayerInterface::ThreadWorker, this);
 #ifdef __linux__
         pthread_setname_np(playerThread->native_handle(), "mixer thread");
 #endif
@@ -182,9 +163,6 @@ void PlayerInterface::UpdateView()
         float vols[trks * 2];
         for (size_t i = 0; i < trks; i++)
             trackLoudness[i].GetLoudness(vols[i*2], vols[i*2+1]);
-
-        /* count number of active PCM channels */
-        trackUI.SetState(ctx->seq, vols, static_cast<int>(ctx->sndChannels.size()), -1);
     }
 }
 
@@ -217,20 +195,22 @@ SongInfo PlayerInterface::GetSongInfo() const
  * private PlayerInterface
  */
 
-void PlayerInterface::initContext()
+void PlayerInterface::InitContext()
 {
-    const auto& cfg = ConfigManager::Instance().GetCfg();
+    const auto& cfg = config->GetCfg();
 
     /* We could make the context a member variable instead of
      * a unique_ptr, but initialization get's a little messy that way */
     ctx = std::make_unique<PlayerContext>(
-            ConfigManager::Instance().GetMaxLoopsPlaylist(),
+            rom,
+            -1,
             cfg.GetTrackLimit(),
-            EnginePars(cfg.GetPCMVol(), cfg.GetEngineRev(), cfg.GetEngineFreq())
+            EnginePars(cfg.GetPCMVol(), cfg.GetEngineRev(), cfg.GetEngineFreq()),
+            config
             );
 }
 
-void PlayerInterface::threadWorker()
+void PlayerInterface::ThreadWorker()
 {
     size_t samplesPerBuffer = ctx->mixer.GetSamplesPerBuffer();
     std::vector<sample> silence(samplesPerBuffer, sample{0.0f, 0.0f});
@@ -292,80 +272,17 @@ void PlayerInterface::threadWorker()
     playerState = State::TERMINATED;
 }
 
-int PlayerInterface::audioCallback(const void *inputBuffer, void *outputBuffer, size_t framesPerBuffer,
-        const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData)
-{
-    (void)inputBuffer;
-    (void)timeInfo;
-    (void)statusFlags;
-    Ringbuffer *rBuf = (Ringbuffer *)userData;
-    rBuf->Take((sample *)outputBuffer, framesPerBuffer);
-    return 0;
-}
 
-void PlayerInterface::setupLoudnessCalcs()
+void PlayerInterface::SetupLoudnessCalcs()
 {
     trackLoudness.clear();
     for (size_t i = 0; i < ctx->seq.tracks.size(); i++)
         trackLoudness.emplace_back(5.0f);
 }
-
-void PlayerInterface::portaudioOpen()
+const std::shared_ptr<Rom> &PlayerInterface::GetRom() const { return rom; }
+const std::shared_ptr<ConfigManager> &PlayerInterface::GetConfig() const
 {
-    // init host api
-    PaDeviceIndex deviceIndex = -1;
-    PaHostApiIndex hostApiIndex = -1;
-    for (const auto apiType : hostApiPriority) {
-        hostApiIndex = Pa_HostApiTypeIdToHostApiIndex(apiType);
-        // prioritized host api available ?
-        if (hostApiIndex < 0)
-            continue;
-
-        const PaHostApiInfo *apiinfo = Pa_GetHostApiInfo(hostApiIndex);
-        if (apiinfo == NULL)
-            throw Xcept("Pa_GetHostApiInfo with valid index failed");
-        deviceIndex = apiinfo->defaultOutputDevice;
-        break;
-    }
-    if (hostApiIndex < 0) {
-        // no prioritized api was found, use default
-        const PaHostApiInfo *apiinfo = Pa_GetHostApiInfo(Pa_GetDefaultHostApi());
-        Debug::print("No supported API found, falling back to: %s", apiinfo->name);
-        if (apiinfo == NULL)
-            throw Xcept("Pa_GetHostApiInfo with valid index failed");
-        deviceIndex = apiinfo->defaultOutputDevice;
-    }
-
-    const PaDeviceInfo *devinfo = Pa_GetDeviceInfo(deviceIndex);
-    if (devinfo == NULL)
-        throw Xcept("Pa_GetDeviceInfo with valid index failed");
-
-    PaStreamParameters outputStreamParameters;
-    outputStreamParameters.device = deviceIndex;
-    outputStreamParameters.channelCount = 2;    // stereo
-    outputStreamParameters.sampleFormat = paFloat32;
-    outputStreamParameters.suggestedLatency = devinfo->defaultLowOutputLatency;
-    outputStreamParameters.hostApiSpecificStreamInfo = NULL;
-
-    PaError err;
-    uint32_t outSampleRate = ctx->mixer.GetSampleRate();
-    if ((err = Pa_OpenStream(&audioStream, NULL, &outputStreamParameters, outSampleRate, 0, paNoFlag, audioCallback, (void *)&rBuf)) != paNoError) {
-        Debug::print("Pa_OpenDefaultStream: %s", Pa_GetErrorText(err));
-        return;
-    }
-    if ((err = Pa_StartStream(audioStream)) != paNoError) {
-        Debug::print("PA_StartStream: %s", Pa_GetErrorText(err));
-        return;
-    }
+    return config;
 }
-
-void PlayerInterface::portaudioClose()
-{
-    PaError err;
-    if ((err = Pa_StopStream(audioStream)) != paNoError) {
-        Debug::print("Pa_StopStream: %s", Pa_GetErrorText(err));
-    }
-    if ((err = Pa_CloseStream(audioStream)) != paNoError) {
-        Debug::print("Pa_CloseStream: %s", Pa_GetErrorText(err));
-    }
-}
+Ringbuffer &PlayerInterface::GetBuffer() { return rBuf; }
+PlayerState PlayerInterface::GetPlayerState() { return playerState; }

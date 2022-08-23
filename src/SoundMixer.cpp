@@ -25,7 +25,7 @@ void SoundMixer::Init(uint32_t fixedModeRate, uint8_t reverb, float pcmMasterVol
     this->numTracks = numTracks;
     this->pcmMasterVolume = pcmMasterVolume;
 
-    GameConfig& gameCfg = ConfigManager::Instance().GetCfg();
+    GameConfig& gameCfg = ctx.GetConfig()->GetCfg();
 
     revdsps.resize(numTracks);
     for (size_t i = 0; i < numTracks; i++)

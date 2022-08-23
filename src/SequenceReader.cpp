@@ -83,7 +83,7 @@ void SequenceReader::SetSpeedFactor(float speedFactor)
 
 void SequenceReader::processSequenceTick()
 {
-    Rom& rom = Rom::Instance();
+    Rom& rom = *this->ctx.GetRom();
     // process all tracks
     bool isSongRunning = false;
     int itrk = -1;
@@ -220,7 +220,7 @@ void SequenceReader::setTrackPV(uint8_t track_idx, uint8_t vol, int8_t pan, int1
 
 void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
 {
-    Rom& rom = Rom::Instance();
+    Rom& rom = *this->ctx.GetRom();
     Track& trk = ctx.seq.tracks[trackIdx];
 
     trk.lastNoteLen = noteLut.at(cmd);
@@ -259,8 +259,8 @@ void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
     note.trackIdx = trackIdx;
 
     // prepare cgb polyphony suppression
-    const ConfigManager& cm = ConfigManager::Instance();
-    CGBPolyphony cgbPolyphony = cm.GetCgbPolyphony();
+    std::shared_ptr<ConfigManager> cm = ctx.GetConfig();
+    CGBPolyphony cgbPolyphony = cm->GetCgbPolyphony();
 
     auto cgbPolyphonySuppressFunc = [&](auto& channels) {
         // return 'true' if a note is allowed to play, 'false' if others with higher priority are playing
@@ -304,14 +304,16 @@ void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
                     ctx.bnk.GetSampInfo(trk.prog, trk.lastNoteKey),
                     ctx.bnk.GetADSR(trk.prog, trk.lastNoteKey),
                     note,
-                    false);
+                    false,
+                    cm);
             break;
         case InstrType::PCM_FIXED:
             ctx.sndChannels.emplace_back(
                     ctx.bnk.GetSampInfo(trk.prog, trk.lastNoteKey),
                     ctx.bnk.GetADSR(trk.prog, trk.lastNoteKey),
                     note,
-                    true);
+                    true,
+                    cm);
             break;
         case InstrType::SQ1:
             if (!cgbPolyphonySuppressFunc(ctx.sq1Channels))
@@ -320,7 +322,8 @@ void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
                     ctx.bnk.GetCGBDef(trk.prog, trk.lastNoteKey).wd,
                     ctx.bnk.GetADSR(trk.prog, trk.lastNoteKey),
                     note,
-                    ctx.bnk.GetSweep(trk.prog, trk.lastNoteKey));
+                    ctx.bnk.GetSweep(trk.prog, trk.lastNoteKey),
+                    cm);
             break;
         case InstrType::SQ2:
             if (!cgbPolyphonySuppressFunc(ctx.sq2Channels))
@@ -329,7 +332,8 @@ void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
                     ctx.bnk.GetCGBDef(trk.prog, trk.lastNoteKey).wd,
                     ctx.bnk.GetADSR(trk.prog, trk.lastNoteKey),
                     note,
-                    0);
+                    0,
+                    cm);
             break;
         case InstrType::WAVE:
             if (!cgbPolyphonySuppressFunc(ctx.waveChannels))
@@ -338,7 +342,8 @@ void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
                     ctx.bnk.GetCGBDef(trk.prog, trk.lastNoteKey).wavePtr,
                     ctx.bnk.GetADSR(trk.prog, trk.lastNoteKey),
                     note,
-                    cm.GetCfg().GetAccurateCh3Volume());
+                    cm->GetCfg().GetAccurateCh3Volume(),
+                    cm);
             break;
         case InstrType::NOISE:
             if (!cgbPolyphonySuppressFunc(ctx.noiseChannels))
@@ -346,7 +351,8 @@ void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
             ctx.noiseChannels.emplace_back(
                     ctx.bnk.GetCGBDef(trk.prog, trk.lastNoteKey).np,
                     ctx.bnk.GetADSR(trk.prog, trk.lastNoteKey),
-                    note);
+                    note,
+                    cm);
             break;
         case InstrType::INVALID:
             return;
@@ -359,7 +365,7 @@ void SequenceReader::cmdPlayNote(uint8_t cmd, uint8_t trackIdx)
 
 void SequenceReader::cmdPlayCommand(uint8_t cmd, uint8_t trackIdx)
 {
-    Rom& rom = Rom::Instance();
+    Rom& rom = *this->ctx.GetRom();
     Track& trk = ctx.seq.tracks[trackIdx];
 
     switch (cmd) {
@@ -540,7 +546,7 @@ void SequenceReader::cmdPlayFine(uint8_t trackIdx)
 
 void SequenceReader::cmdPlayMemacc(uint8_t trackIdx)
 {
-    Rom& rom = Rom::Instance();
+    Rom& rom = *this->ctx.GetRom();
     Track& trk = ctx.seq.tracks[trackIdx];
 
     uint8_t op = rom.ReadU8(trk.pos++);
@@ -648,7 +654,7 @@ void SequenceReader::cmdPlayMemacc(uint8_t trackIdx)
 
 void SequenceReader::cmdPlayXCmd(uint8_t trackIdx)
 {
-    Rom& rom = Rom::Instance();
+    Rom& rom = *this->ctx.GetRom();
     Track& trk = ctx.seq.tracks[trackIdx];
 
     uint8_t xCmdNo = rom.ReadU8(trk.pos++);

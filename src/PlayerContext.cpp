@@ -1,8 +1,8 @@
 #include "PlayerContext.h"
 #include "ConfigManager.h"
 
-PlayerContext::PlayerContext(int8_t maxLoops, uint8_t maxTracks, EnginePars pars)
-    : reader(*this, maxLoops), mixer(*this, STREAM_SAMPLERATE, 1.0f), seq(maxTracks), pars(pars)
+PlayerContext::PlayerContext(std::shared_ptr<Rom> rom, int8_t maxLoops, uint8_t maxTracks, EnginePars pars, std::shared_ptr<ConfigManager> config)
+    : reader(*this, maxLoops), mixer(*this, STREAM_SAMPLERATE, 1.0f), seq(rom, maxTracks), bnk(rom), pars(pars), rom(std::move(rom)), config(std::move(config))
 {
 }
 
@@ -14,7 +14,7 @@ void PlayerContext::Process(std::vector<std::vector<sample>>& trackAudio)
 
 void PlayerContext::InitSong(size_t songHeaderPos)
 {
-    GameConfig& cfg = ConfigManager::Instance().GetCfg();
+    GameConfig& cfg = config->GetCfg();
 
     sndChannels.clear();
     sq1Channels.clear();
@@ -43,4 +43,10 @@ void PlayerContext::InitSong(size_t songHeaderPos)
 bool PlayerContext::HasEnded() const
 {
     return reader.EndReached() && mixer.IsFadeDone();
+}
+
+const std::shared_ptr<Rom> &PlayerContext::GetRom() const { return rom; }
+const std::shared_ptr<ConfigManager> &PlayerContext::GetConfig() const
+{
+    return config;
 }

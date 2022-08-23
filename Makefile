@@ -2,7 +2,7 @@ CXX = g++
 CXXFLAGS = -D_XOPEN_SOURCE=700 -Wall -Wextra -Wconversion -Wunreachable-code -std=c++17 -O3 -g
 #CXXFLAGS = -D_XOPEN_SOURCE=700 -Wall -Wextra -Wconversion -Wunreachable-code -std=c++17 -Og -g -fsanitize=address
 BINARY = agbplay
-LIBS = -lm -lncursesw -pthread -lsndfile -lportaudio -ljsoncpp
+LIBS = -lm -lraylib
 # Use this macro if you have linker errors with ncursesw
 # LIBS = -lm -lncurses -pthread -lsndfile -lportaudio -ljsoncpp
 
@@ -27,17 +27,6 @@ format:
 
 install: $(BINARY) conf_install_global
 	cp "$(BINARY)" "/usr/local/bin/$(BINARY)"
-
-conf_install_global:
-	cp agbplay.json /etc/agbplay.json
-
-conf_install_local:
-	mkdir -p ~/.config/
-	cp agbplay.json ~/.config/agbplay.json
-
-# checkin your local changes from agbplay.json to the git repo
-conf_checkin_local:
-	cp ~/.config/agbplay.json agbplay.json
 
 $(BINARY): $(OBJ_FILES)
 	@printf "[$(RED)Linking$(NCOL)] $(WHITE)$(BINARY)$(NCOL)\n"

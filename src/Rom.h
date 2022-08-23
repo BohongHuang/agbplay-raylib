@@ -12,42 +12,50 @@
 class Rom {
 public:
     Rom(const std::filesystem::path& filePath);
+    Rom(const uint8_t *data, size_t size);
     Rom(const Rom&) = delete;
     Rom& operator=(const Rom&) = delete;
-    static void CreateInstance(const std::filesystem::path& filePath);
-    static Rom& Instance() {
-        return *global_instance;
-    }
 
     const uint8_t& operator[](size_t pos) const {
         return data[pos];
     }
 
+    void CheckPosition(size_t pos) const {
+        if (pos >= size)
+            throw Xcept("Index %lu is out of range", pos);
+    }
+
     int8_t ReadS8(size_t pos) const {
-        return static_cast<int8_t>(data.at(pos));
+        CheckPosition(pos);
+        return static_cast<int8_t>(data[pos]);
     }
 
     uint8_t ReadU8(size_t pos) const {
-        return data.at(pos);
+        CheckPosition(pos);
+        return data[pos];
     }
 
     int16_t ReadS16(size_t pos) const {
+        CheckPosition(pos);
         return static_cast<int16_t>(ReadU16(pos));
     }
 
     uint16_t ReadU16(size_t pos) const {
-        uint32_t retval = data.at(pos + 1);
+        CheckPosition(pos);
+        uint32_t retval = data[pos + 1];
         retval <<= 8;
         retval |= data[pos];
         return static_cast<uint16_t>(retval);
     }
 
     int32_t ReadS32(size_t pos) const {
+        CheckPosition(pos);
         return static_cast<int32_t>(ReadU32(pos));
     }
 
     uint32_t ReadU32(size_t pos) const {
-        uint32_t retval = data.at(pos + 3);
+        CheckPosition(pos);
+        uint32_t retval = data[pos + 3];
         retval <<= 8;
         retval |= data[pos + 2];
         retval <<= 8;
@@ -65,17 +73,18 @@ public:
     }
 
     const void *GetPtr(size_t pos) const {
+        CheckPosition(pos);
         return &data[pos];
     }
 
     size_t Size() const {
-        return data.size();
+        return size;
     }
 
     bool ValidPointer(uint32_t ptr) const {
-        if (ptr - AGB_MAP_ROM >= data.size())
+        if (ptr - AGB_MAP_ROM >= size)
             return false;
-        if (ptr - AGB_MAP_ROM + 1 >= data.size())
+        if (ptr - AGB_MAP_ROM + 1 >= size)
             return false;
         return true;
     }
@@ -84,10 +93,10 @@ public:
     std::string GetROMCode() const;
 
 private:
-    void verify();
-    void loadFile(const std::filesystem::path& filePath);
+    void Verify();
+    void LoadFile(const std::filesystem::path& filePath);
 
-    std::vector<uint8_t> data;
-
-    static std::unique_ptr<Rom> global_instance;
+    std::vector<uint8_t> data_vector;
+    size_t size;
+    const uint8_t *data;
 };
