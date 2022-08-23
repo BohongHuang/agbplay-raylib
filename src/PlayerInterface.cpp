@@ -16,7 +16,7 @@
  */
 
 PlayerInterface::PlayerInterface(std::shared_ptr<Rom> rom, size_t initSongPos, const std::shared_ptr<ConfigManager>& config)
-    : rom(std::move(rom)), config(config), mutedTracks(config->GetCfg().GetTrackLimit())
+    : rom(std::move(rom)), config(config), mutedTracks(config->GetCfg().GetTrackLimit()), rBuf(config->GetStreamBufferSize())
 {
     InitContext();
     ctx->InitSong(initSongPos);
@@ -204,7 +204,7 @@ void PlayerInterface::InitContext()
      * a unique_ptr, but initialization get's a little messy that way */
     ctx = std::make_unique<PlayerContext>(
             rom,
-            -1,
+            config->GetMaxLoopsPlaylist(),
             cfg.GetTrackLimit(),
             EnginePars(cfg.GetPCMVol(), cfg.GetEngineRev(), cfg.GetEngineFreq()),
             config

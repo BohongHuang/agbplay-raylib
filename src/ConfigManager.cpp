@@ -86,3 +86,10 @@ double ConfigManager::GetPadSecondsEnd() const
 {
     return padSecondsEnd;
 }
+
+size_t ConfigManager::GetStreamBufferSize() const { return streamBufferSize; }
+
+void ConfigManager::SetStreamBufferSize(size_t streamBufferSize)
+{
+    ConfigManager::streamBufferSize = streamBufferSize;
+}

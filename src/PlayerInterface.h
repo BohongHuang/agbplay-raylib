@@ -60,7 +60,7 @@ private:
     std::vector<LoudnessCalculator> trackLoudness;
     std::vector<bool> mutedTracks;
 
-    Ringbuffer rBuf{STREAM_BUF_SIZE};
+    Ringbuffer rBuf;
 
     std::unique_ptr<std::thread> playerThread;
 };

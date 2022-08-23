@@ -5,6 +5,7 @@
 #include <filesystem>
 
 #include "GameConfig.h"
+#include "Constants.h"
 
 class ConfigManager
 {
@@ -27,8 +28,15 @@ private:
     std::vector<GameConfig> configs;
     std::filesystem::path confWavOutputDir;
     CGBPolyphony confCgbPolyphony;
-    int8_t maxLoopsPlaylist;
-    int8_t maxLoopsExport;
+    int8_t maxLoopsPlaylist = -1;
+    int8_t maxLoopsExport = 2;
+    size_t streamBufferSize = STREAM_BUF_SIZE;
+
+public:
+    size_t GetStreamBufferSize() const;
+    void SetStreamBufferSize(size_t streamBufferSize);
+
+private:
     std::filesystem::path configPath;
     GameConfig *curCfg = nullptr;
     double padSecondsStart;

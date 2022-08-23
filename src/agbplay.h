@@ -9,20 +9,26 @@
 extern "C" {
 #endif
 
+
+typedef struct {
+    size_t bufferSize;
+    int8_t maxLoopCount;
+} AgbPlayerConfig;
+
 typedef struct {
     void *handle;
 } AgbPlayer;
 
-AgbPlayer *AgbPlayerCreateFromRomData(uint8_t *, size_t);
-AgbPlayer *AgbPlayerCreateFromPath(const char *);
-void AgbPlayerDelete(AgbPlayer *);
-void AgbPlayerPlay(AgbPlayer *);
-void AgbPlayerPause(AgbPlayer *);
-void AgbPlayerStop(AgbPlayer *);
-bool AgbPlayerIsPlaying(AgbPlayer *);
-void AgbPlayerSetSong(AgbPlayer *, uint16_t);
-size_t AgbPlayerGetSongNumber(AgbPlayer *);
-void AgbPlayerTakeBuffer(AgbPlayer *, void *, size_t);
+AgbPlayer AgbPlayerCreateFromRomData(uint8_t * rom, size_t size, AgbPlayerConfig config);
+AgbPlayer AgbPlayerCreateFromPath(const char * path, AgbPlayerConfig config);
+void AgbPlayerDelete(AgbPlayer player);
+void AgbPlayerPlay(AgbPlayer player);
+void AgbPlayerPause(AgbPlayer player);
+void AgbPlayerStop(AgbPlayer player);
+bool AgbPlayerIsPlaying(AgbPlayer player);
+void AgbPlayerSetSong(AgbPlayer player, uint16_t songId);
+size_t AgbPlayerGetSongNumber(AgbPlayer player);
+void AgbPlayerTakeBuffer(AgbPlayer player, void *buffer, size_t size);
 
 #ifdef __cplusplus
 };

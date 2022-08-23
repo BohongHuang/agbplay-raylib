@@ -5,65 +5,73 @@
 class AgbPlayerHandle
 {
 public:
-    explicit AgbPlayerHandle(std::filesystem::path const & filepath);
-    AgbPlayerHandle(uint8_t *rom, size_t size);
+    explicit AgbPlayerHandle(std::filesystem::path const & filepath, AgbPlayerConfig config);
+    AgbPlayerHandle(uint8_t *rom, size_t size, AgbPlayerConfig config);
     std::shared_ptr<Rom> rom;
     std::shared_ptr<ConfigManager> config;
     std::shared_ptr<PlayerInterface> playerInterface;
     std::unique_ptr<SongTable> songTable;
 };
 
-AgbPlayerHandle::AgbPlayerHandle(std::filesystem::path const & filepath): rom(std::make_shared<Rom>(filepath)),
-                                                                    config(std::make_shared<ConfigManager>(rom->GetROMCode())),
-                                                                    playerInterface(std::make_shared<PlayerInterface>(rom, 0, config)),
-                                                                    songTable(std::make_unique<SongTable>(rom)) {}
+std::shared_ptr<ConfigManager> MakeConfigManger(const std::string& romCode, AgbPlayerConfig const & config) {
+    auto configManager = std::make_shared<ConfigManager>(romCode);
+    if(config.maxLoopCount >= -1)
+      configManager->SetMaxLoopsPlaylist(config.maxLoopCount);
+    if(config.bufferSize > 0)
+      configManager->SetStreamBufferSize(config.bufferSize);
+    return configManager;
+}
 
-AgbPlayerHandle::AgbPlayerHandle(uint8_t *rom, size_t size):  rom(std::make_shared<Rom>(rom, size)),
-                                                        config(std::make_shared<ConfigManager>(this->rom->GetROMCode())),
-                                                        playerInterface(std::make_shared<PlayerInterface>(this->rom, 0, config)),
-                                                        songTable(std::make_unique<SongTable>(this->rom)) {}
+AgbPlayerHandle::AgbPlayerHandle(std::filesystem::path const & filepath, AgbPlayerConfig config): rom(std::make_shared<Rom>(filepath)),
+                                                                                                  config(MakeConfigManger(rom->GetROMCode(), config)),
+                                                                                                  playerInterface(std::make_shared<PlayerInterface>(rom, 0, this->config)),
+                                                                                                  songTable(std::make_unique<SongTable>(rom)) {}
 
-AgbPlayer *AgbPlayerCreateFromRomData(uint8_t *data, size_t size) {
-    auto *player = new AgbPlayer;
-    player->handle = static_cast<void*>(new AgbPlayerHandle(data, size));
+AgbPlayerHandle::AgbPlayerHandle(uint8_t * rom, size_t size, AgbPlayerConfig config): rom(std::make_shared<Rom>(rom, size)),
+                                                                                      config(MakeConfigManger(this->rom->GetROMCode(), config)),
+                                                                                      playerInterface(std::make_shared<PlayerInterface>(this->rom, 0, this->config)),
+                                                                                      songTable(std::make_unique<SongTable>(this->rom)) {}
+
+AgbPlayer AgbPlayerCreateFromRomData(uint8_t *data, size_t size, AgbPlayerConfig config) {
+    AgbPlayer player;
+    player.handle = static_cast<void*>(new AgbPlayerHandle(data, size, config));
     return player;
 }
 
-AgbPlayer *AgbPlayerCreateFromPath(const char *path) {
-    auto *player = new AgbPlayer;
-    player->handle = static_cast<void*>(new AgbPlayerHandle(path));
+AgbPlayer AgbPlayerCreateFromPath(const char *path, AgbPlayerConfig config) {
+    AgbPlayer player;
+    player.handle = static_cast<void*>(new AgbPlayerHandle(path, config));
     return player;
 }
 
-void AgbPlayerDelete(AgbPlayer * player) {
-    delete (AgbPlayerHandle *)player->handle;
-    delete player;
+void AgbPlayerDelete(AgbPlayer player) {
+    delete (AgbPlayerHandle *)player.handle;
 }
 
-void AgbPlayerPlay(AgbPlayer * player) {
-    ((AgbPlayerHandle *)player->handle)->playerInterface->Play();
+void AgbPlayerPlay(AgbPlayer player) {
+    ((AgbPlayerHandle *)player.handle)->playerInterface->Play();
 }
 
-void AgbPlayerPause(AgbPlayer * player) {
-    ((AgbPlayerHandle *)player->handle)->playerInterface->Pause();
+void AgbPlayerPause(AgbPlayer player) {
+    ((AgbPlayerHandle *)player.handle)->playerInterface->Pause();
 }
 
-void AgbPlayerStop(AgbPlayer * player) {
-    ((AgbPlayerHandle *)player->handle)->playerInterface->Stop();
+void AgbPlayerStop(AgbPlayer player) {
+    ((AgbPlayerHandle *)player.handle)->playerInterface->Stop();
 }
 
-bool AgbPlayerIsPlaying(AgbPlayer * player) {
-    return ((AgbPlayerHandle *)player->handle)->playerInterface->IsPlaying();
+bool AgbPlayerIsPlaying(AgbPlayer player) {
+    return ((AgbPlayerHandle *)player.handle)->playerInterface->IsPlaying();
 }
 
-void AgbPlayerSetSong(AgbPlayer * player, uint16_t uid) {
-    ((AgbPlayerHandle *)player->handle)->playerInterface->LoadSong(((AgbPlayerHandle *)player->handle)->songTable->GetPosOfSong(uid));
+void AgbPlayerSetSong(AgbPlayer player, uint16_t uid) {
+    ((AgbPlayerHandle *)player.handle)->playerInterface->LoadSong(((AgbPlayerHandle *)player.handle)->songTable->GetPosOfSong(uid));
 }
 
-size_t AgbPlayerGetSongNumber(AgbPlayer *player) {
-    return ((AgbPlayerHandle *)player->handle)->songTable->GetNumSongs();
+size_t AgbPlayerGetSongNumber(AgbPlayer player) {
+    return ((AgbPlayerHandle *)player.handle)->songTable->GetNumSongs();
 }
 
-void AgbPlayerTakeBuffer(AgbPlayer * player, void* buffer, size_t size) {
-    ((AgbPlayerHandle *)player->handle)->playerInterface->GetBuffer().Take(static_cast<sample*>(buffer), size);
+void AgbPlayerTakeBuffer(AgbPlayer player, void* buffer, size_t size) {
+    ((AgbPlayerHandle *)player.handle)->playerInterface->GetBuffer().Take(static_cast<sample*>(buffer), size);
 }
