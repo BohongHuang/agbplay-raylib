@@ -1,98 +1,71 @@
-#include "CInterface.h"
-#include "raylib.h"
+#include "agbplay.h"
+#include "ConfigManager.h"
+#include "PlayerInterface.h"
 
-Player *player;
+class PlayerHandle {
+public:
+    explicit PlayerHandle(std::filesystem::path const & filepath);
+    PlayerHandle(uint8_t *rom, size_t size);
+    std::shared_ptr<Rom> rom;
+    std::shared_ptr<ConfigManager> config;
+    std::shared_ptr<PlayerInterface> playerInterface;
+    std::unique_ptr<SongTable> songTable;
+};
 
-void AudioInputCallback(void *buffer, unsigned int frames)
-{
-    PlayerTakeBuffer(player, buffer, frames);
+PlayerHandle::PlayerHandle(std::filesystem::path const & filepath): rom(std::make_shared<Rom>(filepath)),
+                                                                    config(std::make_shared<ConfigManager>(rom->GetROMCode())),
+                                                                    playerInterface(std::make_shared<PlayerInterface>(rom, 0, config)),
+                                                                    songTable(std::make_unique<SongTable>(rom)) {}
+
+PlayerHandle::PlayerHandle(uint8_t *rom, size_t size):  rom(std::make_shared<Rom>(rom, size)),
+                                                        config(std::make_shared<ConfigManager>(this->rom->GetROMCode())),
+                                                        playerInterface(std::make_shared<PlayerInterface>(this->rom, 0, config)),
+                                                        songTable(std::make_unique<SongTable>(this->rom)) {}
+
+Player *PlayerCreateFromRomData(uint8_t *data, size_t size) {
+    auto *player = new Player;
+    player->handle = static_cast<void*>(new PlayerHandle(data, size));
+    return player;
 }
 
-int main(int argc, char *argv[])
-{
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+Player *PlayerCreateFromPath(const char *path) {
+    auto *player = new Player;
+    player->handle = static_cast<void*>(new PlayerHandle(path));
+    return player;
+}
 
-    InitWindow(screenWidth, screenHeight, "raylib [audio] example - music playing (streaming)");
+void PlayerDelete(Player* player) {
+    delete (PlayerHandle*)player->handle;
+    delete player;
+}
 
-    player = PlayerCreateFromPath(argv[1]);
+void PlayerPlay(Player* player) {
+    ((PlayerHandle*)player->handle)->playerInterface->Play();
+}
 
-    int songId = argc > 2 ? atoi(argv[2]) : 0;
-    int songCount = PlayerGetSongNumber(player);
+void PlayerPause(Player* player) {
+    ((PlayerHandle*)player->handle)->playerInterface->Pause();
+}
 
-    PlayerSetSong(player, songId);
+void PlayerStop(Player* player) {
+    ((PlayerHandle*)player->handle)->playerInterface->Stop();
+    while (((PlayerHandle*)player->handle)->playerInterface->GetPlayerState() != PlayerState::TERMINATED &&
+           ((PlayerHandle*)player->handle)->playerInterface->GetPlayerState() != PlayerState::THREAD_DELETED)
+        ((PlayerHandle*)player->handle)->playerInterface->Stop();
+}
 
-    InitAudioDevice();
+bool PlayerIsPlaying(Player* player) {
+    return ((PlayerHandle*)player->handle)->playerInterface->IsPlaying();
+}
 
-    PlayerPlay(player);
+void PlayerSetSong(Player* player, uint16_t uid) {
+    ((PlayerHandle*)player->handle)->playerInterface->LoadSong(((PlayerHandle*)player->handle)->songTable->GetPosOfSong(uid));
+}
 
-    AudioStream stream = LoadAudioStream(48000, 32, 2);
+size_t PlayerGetSongNumber(Player *player) {
+    return ((PlayerHandle*)player->handle)->songTable->GetNumSongs();
+}
 
-    SetAudioStreamCallback(stream, AudioInputCallback);
-
-    PlayAudioStream(stream);
-
-    char sprintfBuffer[32];
-
-    SetTargetFPS(30);
-
-    while (!WindowShouldClose())
-    {
-        ClearBackground(RAYWHITE);
-
-        if (IsKeyPressed(KEY_UP)) {
-            songId--;
-            if (songId < 0) {
-                songId = 0;
-            }
-            PlayerSetSong(player, songId);
-        }
-
-        if (IsKeyPressed(KEY_LEFT)) {
-            songId -= 10;
-            if (songId < 0) {
-                songId = 0;
-            }
-            PlayerSetSong(player, songId);
-        }
-
-        if (IsKeyPressed(KEY_DOWN)) {
-            songId++;
-            if (songId >= songCount) {
-                songId = songCount - 1;
-            }
-            PlayerSetSong(player, songId);
-        }
-
-        if (IsKeyPressed(KEY_RIGHT)) {
-            songId += 10;
-            if (songId >= songCount) {
-                songId = songCount - 1;
-            }
-            PlayerSetSong(player, songId);
-        }
-
-        if (IsKeyPressed(KEY_SPACE)) {
-            PlayerPause(player);
-        }
-
-        BeginDrawing();
-
-        sprintf(sprintfBuffer, "Current Song: %d", songId);
-        DrawText(sprintfBuffer, 50, 50, 32, BLACK);
-
-        DrawFPS(0, 0);
-
-        EndDrawing();
-    }
-
-    PlayerStop(player);
-
-    CloseAudioDevice();
-
-    CloseWindow();
-
-    PlayerDelete(player);
-
-    return 0;
+void PlayerTakeBuffer(Player* player, void* buffer, size_t size) {
+    ((PlayerHandle*)player->handle)->playerInterface->GetBuffer().Take(static_cast<sample*>(buffer), size);
 }

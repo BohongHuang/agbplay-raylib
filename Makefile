@@ -1,8 +1,8 @@
 CXX = g++
-CXXFLAGS = -D_XOPEN_SOURCE=700 -Wall -Wextra -Wconversion -Wunreachable-code -std=c++17 -O3 -g
+CXXFLAGS = -D_XOPEN_SOURCE=700 -Wall -Wextra -Wconversion -Wunreachable-code -std=c++17 -O3 -g -fPIC
 #CXXFLAGS = -D_XOPEN_SOURCE=700 -Wall -Wextra -Wconversion -Wunreachable-code -std=c++17 -Og -g -fsanitize=address
-BINARY = agbplay
-LIBS = -lm -lraylib
+BINARY = libagbplay.so
+LIBS = -lm
 # Use this macro if you have linker errors with ncursesw
 # LIBS = -lm -lncurses -pthread -lsndfile -lportaudio -ljsoncpp
 
@@ -30,7 +30,7 @@ install: $(BINARY) conf_install_global
 
 $(BINARY): $(OBJ_FILES)
 	@printf "[$(RED)Linking$(NCOL)] $(WHITE)$(BINARY)$(NCOL)\n"
-	@gcc -o $@ $(CXXFLAGS) $^ $(LIBS) -lstdc++
+	@gcc -shared -o $@ $(CXXFLAGS) $^ $(LIBS) -lstdc++
 
 obj/%.o: src/%.cpp src/*.h
 	@printf "[$(GREEN)Compiling$(NCOL)] $(WHITE)$@$(NCOL)\n"
