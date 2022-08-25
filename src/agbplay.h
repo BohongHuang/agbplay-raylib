@@ -13,6 +13,7 @@ extern "C" {
 typedef struct {
     size_t bufferSize;
     int8_t maxLoopCount;
+    bool verificationEnabled;
 } AgbPlayerConfig;
 
 typedef struct {

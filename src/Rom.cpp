@@ -13,15 +13,21 @@
  * public
  */
 
-Rom::Rom(const std::filesystem::path& filePath)
+Rom::Rom(const std::filesystem::path& filePath, bool verificationEnabled)
 {
     LoadFile(filePath);
     data = data_vector.data();
     size = data_vector.size();
-    Verify();
+    if(verificationEnabled) {
+        Verify();
+    }
 }
 
-Rom::Rom(const uint8_t *data, size_t size): size(size), data(data) {}
+Rom::Rom(const uint8_t *data, size_t size, bool verificationEnabled): size(size), data(data) {
+    if(verificationEnabled) {
+        Verify();
+    }
+}
 
 std::string Rom::ReadString(size_t pos, size_t limit) const
 {
@@ -66,10 +72,10 @@ void Rom::Verify()
     };
 
     // check logo
-//    for (size_t i = 0; i < sizeof(imageBytes); i++) {
-//        if (imageBytes[i] != ReadU8(i + 0x4))
-//            throw Xcept("ROM verification: Bad Nintendo Logo");
-//    }
+   for (size_t i = 0; i < sizeof(imageBytes); i++) {
+       if (imageBytes[i] != ReadU8(i + 0x4))
+           throw Xcept("ROM verification: Bad Nintendo Logo");
+   }
 
     // check checksum
     uint8_t checksum = ReadU8(0xBD);

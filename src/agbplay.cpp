@@ -22,12 +22,12 @@ std::shared_ptr<ConfigManager> MakeConfigManger(const std::string& romCode, AgbP
     return configManager;
 }
 
-AgbPlayerHandle::AgbPlayerHandle(std::filesystem::path const & filepath, AgbPlayerConfig config): rom(std::make_shared<Rom>(filepath)),
+AgbPlayerHandle::AgbPlayerHandle(std::filesystem::path const & filepath, AgbPlayerConfig config): rom(std::make_shared<Rom>(filepath, config.verificationEnabled)),
                                                                                                   config(MakeConfigManger(rom->GetROMCode(), config)),
                                                                                                   playerInterface(std::make_shared<PlayerInterface>(rom, 0, this->config)),
                                                                                                   songTable(std::make_unique<SongTable>(rom)) {}
 
-AgbPlayerHandle::AgbPlayerHandle(uint8_t * rom, size_t size, AgbPlayerConfig config): rom(std::make_shared<Rom>(rom, size)),
+AgbPlayerHandle::AgbPlayerHandle(uint8_t * rom, size_t size, AgbPlayerConfig config): rom(std::make_shared<Rom>(rom, size, config.verificationEnabled)),
                                                                                       config(MakeConfigManger(this->rom->GetROMCode(), config)),
                                                                                       playerInterface(std::make_shared<PlayerInterface>(this->rom, 0, this->config)),
                                                                                       songTable(std::make_unique<SongTable>(this->rom)) {}

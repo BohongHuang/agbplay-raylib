@@ -11,8 +11,8 @@
 
 class Rom {
 public:
-    Rom(const std::filesystem::path& filePath);
-    Rom(const uint8_t *data, size_t size);
+    Rom(const std::filesystem::path& filePath, bool verificationEnabled = true);
+    Rom(const uint8_t *data, size_t size, bool verificationEnabled = true);
     Rom(const Rom&) = delete;
     Rom& operator=(const Rom&) = delete;
 
