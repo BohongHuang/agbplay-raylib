@@ -18,9 +18,9 @@
 PlayerInterface::PlayerInterface(std::shared_ptr<Rom> rom, size_t initSongPos, const std::shared_ptr<ConfigManager>& config)
     : rom(std::move(rom)), config(config), mutedTracks(config->GetCfg().GetTrackLimit()), rBuf(config->GetStreamBufferSize())
 {
-    InitContext();
+    initContext();
     ctx->InitSong(initSongPos);
-    SetupLoudnessCalcs();
+    setupLoudnessCalcs();
 }
 
 PlayerInterface::~PlayerInterface() 
@@ -34,7 +34,7 @@ void PlayerInterface::LoadSong(size_t songPos)
     bool play = playerState == State::PLAYING;
     Stop();
     ctx->InitSong(songPos);
-    SetupLoudnessCalcs();
+    setupLoudnessCalcs();
     // TODO replace this with pairs
     float vols[ctx->seq.tracks.size() * 2];
     for (size_t i = 0; i < ctx->seq.tracks.size() * 2; i++)
@@ -69,7 +69,7 @@ void PlayerInterface::Play()
     case State::THREAD_DELETED:
         playerState = State::PLAYING;
         playerThread = std::make_unique<std::thread>(
-                &PlayerInterface::ThreadWorker, this);
+                &PlayerInterface::threadWorker, this);
 #ifdef __linux__
         pthread_setname_np(playerThread->native_handle(), "mixer thread");
 #endif
@@ -196,7 +196,7 @@ SongInfo PlayerInterface::GetSongInfo() const
  * private PlayerInterface
  */
 
-void PlayerInterface::InitContext()
+void PlayerInterface::initContext()
 {
     const auto& cfg = config->GetCfg();
 
@@ -211,7 +211,7 @@ void PlayerInterface::InitContext()
             );
 }
 
-void PlayerInterface::ThreadWorker()
+void PlayerInterface::threadWorker()
 {
     size_t samplesPerBuffer = ctx->mixer.GetSamplesPerBuffer();
     std::vector<sample> silence(samplesPerBuffer, sample{0.0f, 0.0f});
@@ -274,7 +274,7 @@ void PlayerInterface::ThreadWorker()
 }
 
 
-void PlayerInterface::SetupLoudnessCalcs()
+void PlayerInterface::setupLoudnessCalcs()
 {
     trackLoudness.clear();
     for (size_t i = 0; i < ctx->seq.tracks.size(); i++)

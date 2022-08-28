@@ -1,0 +1,2 @@
+#+TITLE: agbplay
+An [[https://github.com/ipatix/agbplay][agbplay]]  fork with user interface removed and suitable for use as a library.

@@ -15,17 +15,17 @@
 
 Rom::Rom(const std::filesystem::path& filePath, bool verificationEnabled)
 {
-    LoadFile(filePath);
+    loadFile(filePath);
     data = data_vector.data();
     size = data_vector.size();
     if(verificationEnabled) {
-        Verify();
+        verify();
     }
 }
 
 Rom::Rom(const uint8_t *data, size_t size, bool verificationEnabled): size(size), data(data) {
     if(verificationEnabled) {
-        Verify();
+        verify();
     }
 }
 
@@ -50,7 +50,7 @@ std::string Rom::GetROMCode() const
  * private
  */
 
-void Rom::Verify()
+void Rom::verify()
 {
     // check ROM size
     if (size > AGB_ROM_SIZE || size < 0x200)
@@ -88,7 +88,7 @@ void Rom::Verify()
         throw Xcept("ROM verification: Bad Header Checksum: %02X - expected %02X", (int)checksum, (int)check);
 }
 
-void Rom::LoadFile(const std::filesystem::path& filePath)
+void Rom::loadFile(const std::filesystem::path& filePath)
 {
     std::ifstream is(filePath, std::ios_base::binary);
     if (!is.is_open()) {

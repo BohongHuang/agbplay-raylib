@@ -18,8 +18,8 @@ public:
     void Take(sample *outData, size_t nElements);
     void Clear();
 private:
-    size_t PutChunk(sample *inData, size_t nElements);
-    size_t TakeChunk(sample *outData, size_t nElements);
+    size_t putChunk(sample *inData, size_t nElements);
+    size_t takeChunk(sample *outData, size_t nElements);
 
     std::vector<sample> bufData;
     std::mutex countLock;

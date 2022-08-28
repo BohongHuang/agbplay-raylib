@@ -21,7 +21,7 @@ void Ringbuffer::Put(sample *inData, size_t nElements)
     std::unique_lock<std::mutex> lock(countLock);
 
     while (nElements > 0) {
-        size_t count = PutChunk(inData, nElements);
+        size_t count = putChunk(inData, nElements);
         inData += count;
         nElements -= count;
     }
@@ -36,7 +36,7 @@ void Ringbuffer::Take(sample *outData, size_t nElements)
         // output
         std::unique_lock<std::mutex> lock(countLock);
         while (nElements > 0) {
-            size_t count = TakeChunk(outData, nElements);
+            size_t count = takeChunk(outData, nElements);
             outData += count;
             nElements -= count;
         }
@@ -57,7 +57,7 @@ void Ringbuffer::Clear()
  * private Ringbuffer
  */
 
-size_t Ringbuffer::PutChunk(sample *inData, size_t nElements)
+size_t Ringbuffer::putChunk(sample *inData, size_t nElements)
 {
     bool wrap = nElements >= bufData.size() - freePos;
     size_t count;
@@ -76,7 +76,7 @@ size_t Ringbuffer::PutChunk(sample *inData, size_t nElements)
     return count;
 }
 
-size_t Ringbuffer::TakeChunk(sample *outData, size_t nElements)
+size_t Ringbuffer::takeChunk(sample *outData, size_t nElements)
 {
     bool wrap = nElements >= bufData.size() - dataPos;
     size_t count;

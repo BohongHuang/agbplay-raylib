@@ -388,12 +388,12 @@ bool SongTable::validateSong(size_t songPos)
     if ((nTracks | nBlocks | prio | rev) == 0)
         return true;
 
-    // Verify voicegroup pointer
+    // verify voicegroup pointer
     uint32_t voicePtr = rom->ReadU32(songPos + 4);
     if (!rom->ValidPointer(voicePtr))
         return false;
 
-    // Verify track pointers
+    // verify track pointers
     for (uint32_t i = 0; i < nTracks; i++) {
         uint32_t trackPtr = rom->ReadU32(songPos + 8 + (i * 4));
         if (!rom->ValidPointer(trackPtr))

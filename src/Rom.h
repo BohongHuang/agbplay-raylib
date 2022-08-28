@@ -93,8 +93,8 @@ public:
     std::string GetROMCode() const;
 
 private:
-    void Verify();
-    void LoadFile(const std::filesystem::path& filePath);
+    void verify();
+    void loadFile(const std::filesystem::path& filePath);
 
     std::vector<uint8_t> data_vector;
     size_t size;

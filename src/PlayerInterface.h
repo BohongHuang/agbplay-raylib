@@ -44,10 +44,10 @@ public:
     PlayerState GetPlayerState();
 
 private:
-    void InitContext();
-    void ThreadWorker();
+    void initContext();
+    void threadWorker();
 
-    void SetupLoudnessCalcs();
+    void setupLoudnessCalcs();
 
     std::shared_ptr<Rom> rom;
     std::shared_ptr<ConfigManager> config;
